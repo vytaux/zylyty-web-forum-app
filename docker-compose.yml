@@ -1,0 +1,36 @@
+services:
+  app:
+    build: .
+    ports:
+      - "${API_LISTENING_PORT}:${API_LISTENING_PORT}"
+    environment:
+      - API_LISTENING_PORT=${API_LISTENING_PORT}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - ADMIN_API_KEY=${ADMIN_API_KEY}
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "${DB_PORT}:${DB_PORT}"
+    environment:
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_USER=${DB_USERNAME}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=12345
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 1s
+      timeout: 30s
+      retries: 10
+
+volumes:
+  mysql-data:
