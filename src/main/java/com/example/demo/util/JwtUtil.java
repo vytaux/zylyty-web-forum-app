@@ -10,7 +10,7 @@ import java.util.Date;
 
 public class JwtUtil {
 
-    // HS256-length key
+    // HS256 32-byte length key
     private static final String JWT_SECRET = "0714ac5ac82f3c70354b7c91832980a9d04bf6c497b3f7eca3bbdc40698f75fa";
 
     private static final SecretKey SECRET_KEY = Keys

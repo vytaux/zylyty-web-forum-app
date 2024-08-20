@@ -1,6 +1,6 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.LoginRequest;
+import com.example.demo.model.request.LoginRequest;
 import com.example.demo.exception.AuthenticationException;
 import com.example.demo.exception.UserAlreadyExistsException;
 import com.example.demo.model.User;

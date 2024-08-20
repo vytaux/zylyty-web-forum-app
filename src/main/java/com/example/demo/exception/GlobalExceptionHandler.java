@@ -35,4 +35,10 @@ public class GlobalExceptionHandler {
     public String handleAuthenticationException(AuthenticationException ex) {
         return ex.getMessage();
     }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(IllegalArgumentException.class)
+    public String handleIllegalArgumentException(IllegalArgumentException ex) {
+        return ex.getMessage();
+    }
 }
