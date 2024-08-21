@@ -1,9 +1,9 @@
 package com.example.demo.service;
 
-import com.example.demo.model.request.LoginRequest;
 import com.example.demo.exception.AuthenticationException;
 import com.example.demo.exception.UserAlreadyExistsException;
 import com.example.demo.model.User;
+import com.example.demo.model.request.LoginRequest;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.util.JwtUtil;
 import lombok.RequiredArgsConstructor;

@@ -1,6 +1,7 @@
 package com.example.demo.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -16,7 +17,7 @@ public class Post {
 
     @ManyToOne
     @JoinColumn(name = "thread_id", nullable = false)
-    @JsonBackReference
+    @JsonIgnore
     private Thread thread;
 
     @Column(nullable = false)

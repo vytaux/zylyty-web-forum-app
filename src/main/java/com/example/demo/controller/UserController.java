@@ -1,7 +1,7 @@
 package com.example.demo.controller;
 
-import com.example.demo.model.request.LoginRequest;
 import com.example.demo.model.User;
+import com.example.demo.model.request.LoginRequest;
 import com.example.demo.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

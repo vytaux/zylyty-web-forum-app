@@ -1,7 +1,6 @@
 package com.example.demo.controller;
 
 import com.example.demo.service.SearchService;
-import com.example.demo.service.ThreadService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +22,7 @@ public class SearchController {
         if (sessionCookie == null || !sessionCookie.contains("session=")) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+
         return searchService.searchThreads(sessionCookie, searchText);
     }
 }
