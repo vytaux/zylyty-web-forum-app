@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.model.Category;
 import com.example.demo.repository.CategoryRepository;
+import com.example.demo.repository.ThreadRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,9 +20,10 @@ import java.util.stream.Collectors;
 public class CategoryService {
 
     @Value("${admin.api.key}")
-    private String ADMIN_API_KEY;
+    private String adminApiKey;
 
     private final CategoryRepository categoryRepository;
+    private final ThreadRepository threadRepository;
 
     private static final Pattern CATEGORY_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9\\s]{3,50}$");
 
@@ -35,7 +37,7 @@ public class CategoryService {
     }
 
     public ResponseEntity<Void> createCategories(String token, Map<String, List<String>> requestBody) {
-        if (!ADMIN_API_KEY.equals(token)) {
+        if (!token.equals(adminApiKey)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
@@ -78,5 +80,23 @@ public class CategoryService {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(categories);
+    }
+
+    public ResponseEntity<String> deleteCategory(String token, String categoryName) {
+        if (!token.equals(adminApiKey)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        if (categoryName.equalsIgnoreCase("Default")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Cannot delete the Default category");
+        }
+
+        Category category = categoryRepository.findByName(categoryName)
+                .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+
+        categoryRepository.delete(category);
+
+        return ResponseEntity.ok().build();
     }
 }

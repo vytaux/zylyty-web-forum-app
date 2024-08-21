@@ -3,8 +3,6 @@ package com.example.demo.controller;
 import com.example.demo.service.CategoryService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,5 +26,11 @@ public class CategoryController {
     public ResponseEntity<List<String>> listCategories(HttpServletRequest request) {
         String sessionCookie = request.getHeader("Cookie");
         return categoryService.listCategories(sessionCookie);
+    }
+
+    @DeleteMapping("/categories")
+    public ResponseEntity<String> deleteCategory(@RequestHeader("Token") String token,
+                                                 @RequestParam("category") String categoryName) {
+        return categoryService.deleteCategory(token, categoryName);
     }
 }
