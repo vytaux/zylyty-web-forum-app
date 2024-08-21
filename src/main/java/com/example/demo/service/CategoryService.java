@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.model.Category;
 import com.example.demo.repository.CategoryRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,15 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
 
     private static final Pattern CATEGORY_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9\\s]{3,50}$");
+
+    @PostConstruct
+    public void init() {
+        if (!categoryRepository.existsByName("Default")) {
+            Category defaultCategory = new Category();
+            defaultCategory.setName("Default");
+            categoryRepository.save(defaultCategory);
+        }
+    }
 
     public ResponseEntity<Void> createCategories(String token, Map<String, List<String>> requestBody) {
         if (!ADMIN_API_KEY.equals(token)) {
@@ -66,10 +76,6 @@ public class CategoryService {
                 .stream()
                 .map(Category::getName)
                 .collect(Collectors.toList());
-
-        if (!categories.contains("Default")) {
-            categories.add("Default");
-        }
 
         return ResponseEntity.ok(categories);
     }
