@@ -22,14 +22,14 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class ThreadService {
+
+    @Value("${admin.api.key}")
+    private String adminApiKey;
 
     @Value("${jwt.secret}")
     private String jwtSecret;
@@ -135,5 +135,19 @@ public class ThreadService {
                 .orElseThrow(() -> new IllegalArgumentException("Thread not found"));
 
         return ResponseEntity.ok(thread);
+    }
+
+    public ResponseEntity<Void> deleteThread(Long threadId, String adminApiKey) {
+        if (!adminApiKey.equals(this.adminApiKey)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        if (!threadRepository.existsById(threadId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
+        threadRepository.deleteById(threadId);
+
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 }

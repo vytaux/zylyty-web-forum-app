@@ -44,4 +44,10 @@ public class ThreadController {
                                            @RequestParam("thread_id") Long threadId) {
         return threadService.getPosts(sessionCookie, threadId);
     }
+
+    @DeleteMapping
+    public ResponseEntity<Void> deleteThread(@RequestHeader(value = "Token", defaultValue = "") String adminApiKey,
+                                             @RequestParam("id") Long threadId) {
+        return threadService.deleteThread(threadId, adminApiKey);
+    }
 }
