@@ -9,6 +9,7 @@ import java.util.List;
 
 @Data
 public class PostRequest {
+
     @NotNull(message = "Thread ID is mandatory")
     private Long threadId;
 

@@ -8,11 +8,17 @@ import lombok.Data;
 
 import java.util.List;
 
-@Entity
 @Data
+@Entity
+@Table(name = "categories")
 public class Category {
+
+    @Version
+    private int version;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(nullable = false, updatable = false)
     private Long id;
 
     @NotBlank(message = "Category name is mandatory")

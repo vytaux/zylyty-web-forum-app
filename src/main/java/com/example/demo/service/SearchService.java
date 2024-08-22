@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.model.Post;
 import com.example.demo.model.Thread;
+import com.example.demo.model.response.SearchResponse;
 import com.example.demo.repository.ThreadRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -9,24 +10,23 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class SearchService {
 
     private final ThreadRepository threadRepository;
+    private final JwtService jwtService;
 
-    public ResponseEntity<Map<Long, List<String>>> searchThreads(String sessionCookie, String searchText) {
-        if (sessionCookie == null || !sessionCookie.contains("session=")) {
+    public ResponseEntity<SearchResponse> searchThreads(String sessionCookie, String searchText) {
+        if (!jwtService.isSessionValid(sessionCookie)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         List<Thread> threads = threadRepository.searchByTitleOrPostsContent(searchText.toLowerCase());
 
-        Map<Long, List<String>> searchResults = new HashMap<>();
+        SearchResponse searchResponse = new SearchResponse();
         for (Thread thread : threads) {
             List<String> snippets = new ArrayList<>();
             String lowerCaseSearchText = searchText.toLowerCase();
@@ -44,11 +44,11 @@ public class SearchService {
             }
 
             if (!snippets.isEmpty()) {
-                searchResults.put(thread.getId(), snippets);
+                searchResponse.getSearchResults().put(thread.getId(), snippets);
             }
         }
 
-        return ResponseEntity.ok(searchResults);
+        return ResponseEntity.ok(searchResponse);
     }
 
     private String getSnippet(String text, String searchText) {
@@ -56,32 +56,64 @@ public class SearchService {
         String lowerCaseSearchText = searchText.toLowerCase();
         int index = lowerCaseText.indexOf(lowerCaseSearchText);
 
-        if (index == -1) {
-            return "";
+        // 0..index
+        int posStart = findPos3WordsBefore(index, text);
+        // index+searchText.length..text.length
+        int posEnd = findPos3WordsAfter(index, text, searchText);
+
+        String snippet = text.substring(posStart, posEnd);
+        if (posStart > 0) {
+            snippet = "..." + snippet;
+        }
+        if (posEnd < text.length()) {
+            snippet = snippet + "...";
         }
 
-        String[] words = text.split("\\s+");
-        int wordIndex = 0;
-        int charCount = 0;
+        return snippet;
+    }
 
-        // Find the word index of the search text
-        for (int i = 0; i < words.length; i++) {
-            charCount += words[i].length() + 1; // +1 for the space
-            if (charCount > index) {
-                wordIndex = i;
-                break;
+    private int findPos3WordsBefore(int index, String text) {
+        int wordsFound = 0;
+        boolean inWord = false;
+
+        for (int i = index-1; i > 0; i--) {
+            if (text.charAt(i) == ' ') {
+                if (inWord) {
+                    wordsFound++;
+                    inWord = false;
+                }
+            } else {
+                inWord = true;
+            }
+
+            if (wordsFound == 3) {
+                return i+1;
             }
         }
 
-        int start = Math.max(0, wordIndex - 3);
-        int end = Math.min(words.length, wordIndex + 4); // +4 to include the search text word
+        return 0;
+    }
 
-        StringBuilder snippet = new StringBuilder("...");
-        for (int i = start; i < end; i++) {
-            snippet.append(words[i]).append(" ");
+    private int findPos3WordsAfter(int index, String text, String searchText) {
+        int wordsFound = 0;
+        boolean inWord = false;
+
+        int nextWhitespace = text.indexOf(' ', index + searchText.length());
+        for (int i = nextWhitespace; i < text.length(); i++) {
+            if (text.charAt(i) == ' ') {
+                if (inWord) {
+                    wordsFound++;
+                    inWord = false;
+                }
+            } else {
+                inWord = true;
+            }
+
+            if (wordsFound == 3) {
+                return i;
+            }
         }
-        snippet.append("...");
 
-        return snippet.toString().trim();
+        return text.length();
     }
 }

@@ -7,19 +7,21 @@ import lombok.Data;
 
 @Data
 public class ThreadRequest {
-    @NotBlank(message = "Category is mandatory")
+
+    @NotBlank(message = "Category is required")
+    @Size(min = 3, max = 200, message = "Category must be between 3 and 200 characters")
     private String category;
 
-    @NotBlank(message = "Thread title is mandatory")
-    @Size(min = 3, max = 100, message = "Thread title must be between 3 and 100 characters")
+    @NotBlank(message = "Title is required")
+    @Size(min = 3, max = 200, message = "Title must be between 3 and 200 characters")
     private String title;
 
     @Valid
-    private OpeningPostRequest openingPost;
+    private OpeningPost openingPost;
 
     @Data
-    public static class OpeningPostRequest {
-        @NotBlank(message = "Opening post text is mandatory")
+    public static class OpeningPost {
+        @NotBlank(message = "Text is required")
         private String text;
     }
 }

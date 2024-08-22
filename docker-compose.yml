@@ -28,8 +28,8 @@ services:
       - mysql-data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 1s
-      timeout: 30s
+      interval: 3s
+      timeout: 60s
       retries: 10
 
 volumes:

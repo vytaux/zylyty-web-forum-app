@@ -3,120 +3,145 @@ package com.example.demo.service;
 import com.example.demo.model.Category;
 import com.example.demo.model.Post;
 import com.example.demo.model.Thread;
+import com.example.demo.model.User;
 import com.example.demo.model.request.PostRequest;
 import com.example.demo.model.request.ThreadRequest;
+import com.example.demo.model.response.GetPostsResponse;
+import com.example.demo.model.response.ListThreadsResponse;
 import com.example.demo.repository.CategoryRepository;
 import com.example.demo.repository.ThreadRepository;
+import com.example.demo.repository.UserRepository;
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class ThreadService {
 
+    private final UserRepository userRepository;
     @Value("${admin.api.key}")
     private String adminApiKey;
 
-    @Value("${jwt.secret}")
-    private String jwtSecret;
-
-    private static SecretKey SECRET_KEY;
-
-    @PostConstruct
-    public void init() {
-        SECRET_KEY = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-    }
-
     private final ThreadRepository threadRepository;
     private final CategoryRepository categoryRepository;
+    private final JwtService jwtService;
 
-    public ResponseEntity<Void> createThread(String sessionCookie, ThreadRequest threadRequest) {
-        if (sessionCookie == null || !sessionCookie.contains("session=")) {
+    public ResponseEntity<String> createThread(String sessionCookie, ThreadRequest request) {
+        Claims payload = jwtService.getTokenPayload(sessionCookie);
+
+        if (payload == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        String token = sessionCookie.replace("session=", "");
-        Claims claims = Jwts.parser()
-                .verifyWith(SECRET_KEY)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-        String author = claims.getSubject();
+        Category category = categoryRepository.findByName(request.getCategory()).orElse(null);
+        if (category == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(String.format("Category %s does not exist", request.getCategory()));
+        }
 
-        Category category = categoryRepository.findByName(threadRequest.getCategory())
-                .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+        String authorName = payload.getSubject();
+
+        User author = userRepository.findByUsername(authorName).orElse(null);
+        if (author == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
 
         Thread thread = new Thread();
         thread.setCategory(category);
-        thread.setTitle(threadRequest.getTitle());
+        thread.setTitle(request.getTitle());
         thread.setAuthor(author);
-        thread.setCreatedAt(LocalDateTime.now());
 
-        Thread.OpeningPost openingPost = new Thread.OpeningPost();
-        openingPost.setText(threadRequest.getOpeningPost().getText());
-        thread.setOpeningPost(openingPost);
+        Post openingPost = new Post();
+        openingPost.setAuthor(author);
+        openingPost.setText(request.getOpeningPost().getText());
+        openingPost.setOpeningPost(true);
+        openingPost.setThread(thread);
+
+        thread.getPosts().add(openingPost);
 
         threadRepository.save(thread);
 
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
-    public ResponseEntity<List<Thread>> listThreads(
+    public ResponseEntity<?> listThreads(
             String sessionCookie,
             List<String> categories,
             boolean newestFirst,
             int page,
             int pageSize
     ) {
-        if (sessionCookie == null || !sessionCookie.contains("session=")) {
+        if (!jwtService.isSessionValid(sessionCookie)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        Sort sort = newestFirst ? Sort.by("createdAt").descending() : Sort.by("createdAt").ascending();
-        PageRequest pageRequest = PageRequest.of(page - 1, pageSize, sort);
+        for (String category : categories) {
+            if (!categoryRepository.existsByName(category)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(String.format("Category \"%s\" does not exist", category));
+            }
+        }
 
-        List<Thread> threads = threadRepository
-                .findByCategoryNameInOrderByCreatedAtDesc(categories, pageRequest)
-                .getContent();
+        Sort sort = newestFirst ? Sort.by("id").descending() : Sort.by("id").ascending();
+        PageRequest pageRequest = PageRequest.of(page, pageSize, sort);
 
-        return ResponseEntity.ok(threads);
+        Page<Long> threadIdsPage = threadRepository.findThreadIdsByCategoriesPaged(categories, pageRequest);
+        List<Thread> threads = threadRepository.findThreadsWithAssociationsByIds(threadIdsPage.getContent(), sort);
+
+        List<ListThreadsResponse.ThreadDTO> threadDTOs = new ArrayList<>();
+        for (Thread thread : threads) {
+            ListThreadsResponse.ThreadDTO threadDTO = new ListThreadsResponse.ThreadDTO();
+            threadDTO.setId(thread.getId());
+            threadDTO.setCategory(thread.getCategory().getName());
+            threadDTO.setTitle(thread.getTitle());
+            threadDTO.setAuthor(thread.getAuthor().getUsername());
+            threadDTO.setCreatedAt(thread.getCreatedAt());
+
+            ListThreadsResponse.PostDTO openingPostResponse = new ListThreadsResponse.PostDTO();
+            openingPostResponse.setText(thread.getPosts().get(0).getText());
+            threadDTO.setOpeningPost(openingPostResponse);
+
+            threadDTOs.add(threadDTO);
+        }
+
+        ListThreadsResponse response = new ListThreadsResponse();
+        response.setThreads(threadDTOs);
+
+        return ResponseEntity.ok(response);
     }
 
     public ResponseEntity<Void> addPosts(String sessionCookie, PostRequest postRequest) {
-        if (sessionCookie == null || !sessionCookie.contains("session=")) {
+        Claims claims = jwtService.getTokenPayload(sessionCookie);
+        if (claims == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        String token = sessionCookie.replace("session=", "");
-        Claims claims = Jwts.parser()
-                .verifyWith(SECRET_KEY)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-        String author = claims.getSubject();
+        Thread thread = threadRepository.findById(postRequest.getThreadId()).orElse(null);
+        if (thread == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
 
-        Thread thread = threadRepository.findById(postRequest.getThreadId())
-                .orElseThrow(() -> new IllegalArgumentException("Thread not found"));
+        String authorName = claims.getSubject();
+
+        User author = userRepository.findByUsername(authorName).orElse(null);
+        if (author == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
 
         for (PostRequest.Post postRequestPost : postRequest.getPosts()) {
             Post post = new Post();
             post.setAuthor(author);
             post.setText(postRequestPost.getText());
-            post.setCreatedAt(LocalDateTime.now());
             post.setThread(thread);
             thread.getPosts().add(post);
         }
@@ -126,15 +151,40 @@ public class ThreadService {
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
-    public ResponseEntity<Thread> getPosts(String sessionCookie, Long threadId) {
-        if (sessionCookie == null || !sessionCookie.contains("session=")) {
+    public ResponseEntity<GetPostsResponse> getPosts(String sessionCookie, Long threadId) {
+        if (!jwtService.isSessionValid(sessionCookie)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        Thread thread = threadRepository.findById(threadId)
-                .orElseThrow(() -> new IllegalArgumentException("Thread not found"));
+        Thread thread = threadRepository.findById(threadId).orElse(null);
+        if (thread == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
 
-        return ResponseEntity.ok(thread);
+        GetPostsResponse response = new GetPostsResponse();
+        response.setId(thread.getId());
+        response.setCategory(thread.getCategory().getName());
+        response.setTitle(thread.getTitle());
+        response.setText(thread.getPosts().get(0).getText());
+        response.setAuthor(thread.getAuthor().getUsername());
+        response.setCreatedAt(thread.getCreatedAt());
+
+        List<GetPostsResponse.PostDTO> postDTOs = new ArrayList<>();
+        for (Post post : thread.getPosts()) {
+            if (post.isOpeningPost()) {
+                continue;
+            }
+
+            GetPostsResponse.PostDTO postDTO = new GetPostsResponse.PostDTO();
+            postDTO.setAuthor(post.getAuthor().getUsername());
+            postDTO.setText(post.getText());
+            postDTO.setCreatedAt(post.getCreatedAt());
+            postDTOs.add(postDTO);
+        }
+
+        response.setPosts(postDTOs);
+
+        return ResponseEntity.ok(response);
     }
 
     public ResponseEntity<Void> deleteThread(Long threadId, String adminApiKey) {

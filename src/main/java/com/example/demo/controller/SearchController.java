@@ -1,13 +1,10 @@
 package com.example.demo.controller;
 
+import com.example.demo.model.response.SearchResponse;
 import com.example.demo.service.SearchService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/search")
@@ -17,12 +14,8 @@ public class SearchController {
     private final SearchService searchService;
 
     @GetMapping
-    public ResponseEntity<Map<Long, List<String>>> searchThreads(@RequestHeader("Cookie") String sessionCookie,
-                                                                 @RequestParam("text") String searchText) {
-        if (sessionCookie == null || !sessionCookie.contains("session=")) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
+    public ResponseEntity<SearchResponse> searchThreads(@RequestHeader(value = "Cookie", defaultValue = "") String sessionCookie,
+                                                        @RequestParam("text") String searchText) {
         return searchService.searchThreads(sessionCookie, searchText);
     }
 }

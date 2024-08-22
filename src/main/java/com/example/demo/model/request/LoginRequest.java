@@ -1,13 +1,14 @@
 package com.example.demo.model.request;
 
-import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
 public class LoginRequest {
-    @NotEmpty(message = "Username is required")
+    @NotBlank(message = "Username is required")
     private String username;
 
-    @NotEmpty(message = "Password is required")
+    @NotBlank(message = "Password is required")
     private String password;
 }
