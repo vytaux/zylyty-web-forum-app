@@ -99,6 +99,11 @@ public class SearchService {
         boolean inWord = false;
 
         int nextWhitespace = text.indexOf(' ', index + searchText.length());
+
+        if (nextWhitespace == -1) {
+            return text.length();
+        }
+
         for (int i = nextWhitespace; i < text.length(); i++) {
             if (text.charAt(i) == ' ') {
                 if (inWord) {
